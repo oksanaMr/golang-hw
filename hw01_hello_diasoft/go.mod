@@ -1,4 +1,4 @@
-module github.com/oksanaMr/hw01_hello_diasoft
+module github.com/oksanaMr/golang-hw/hw01_hello_diasoft
 
 go 1.18
 
