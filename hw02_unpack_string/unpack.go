@@ -15,7 +15,6 @@ func Unpack(s string) (string, error) {
 	r := []rune(s)
 
 	for i := 0; i < len(r); {
-
 		if unicode.IsDigit(r[i]) {
 			return "", ErrInvalidString
 		}
