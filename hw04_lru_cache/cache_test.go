@@ -49,8 +49,100 @@ func TestCache(t *testing.T) {
 		require.Nil(t, val)
 	})
 
-	t.Run("purge logic", func(t *testing.T) {
-		// Write me
+	t.Run("выталкивание элементов из-за размера очереди", func(t *testing.T) {
+		// Создаем кэш на 3 элемента
+		c := NewCache(3)
+
+		// Добавляем 3 элемента
+		c.Set("a", 1)
+		c.Set("b", 2)
+		c.Set("c", 3)
+		// очередь: [c, b, a]
+
+		// Проверяем, что все три элемента на месте
+		val, ok := c.Get("a")
+		require.True(t, ok)
+		require.Equal(t, 1, val)
+
+		val, ok = c.Get("b")
+		require.True(t, ok)
+		require.Equal(t, 2, val)
+
+		val, ok = c.Get("c")
+		require.True(t, ok)
+		require.Equal(t, 3, val)
+
+		// Добавляем 4-й элемент
+		c.Set("d", 4)
+		// очередь: [d, c, b]
+
+		// Элемент 'a' должен быть вытолкнут
+		val, ok = c.Get("a")
+		require.False(t, ok)
+		require.Nil(t, val)
+
+		// Остальные элементы должны остаться
+		val, ok = c.Get("b")
+		require.True(t, ok)
+		require.Equal(t, 2, val)
+
+		val, ok = c.Get("c")
+		require.True(t, ok)
+		require.Equal(t, 3, val)
+
+		val, ok = c.Get("d")
+		require.True(t, ok)
+		require.Equal(t, 4, val)
+	})
+
+	t.Run("выталкивание давно используемых элементов", func(t *testing.T) {
+		// Создаем кэш на 3 элемента
+		c := NewCache(3)
+
+		// Добавляем 3 элемента
+		c.Set("a", 1)
+		c.Set("b", 2)
+		c.Set("c", 3)
+		// очередь: [c, b, a]
+
+		// Обращаемся к 'a'
+		val, ok := c.Get("a")
+		require.True(t, ok)
+		require.Equal(t, 1, val)
+		// очередь: [a, c, b]
+
+		// Обращаемся к 'b'
+		val, ok = c.Get("b")
+		require.True(t, ok)
+		require.Equal(t, 2, val)
+		// очередь: [b, a, c]
+
+		// Обновляем значение 'c'
+		wasInCache := c.Set("c", 33)
+		require.True(t, wasInCache)
+		// очередь: [c, b, a]
+
+		// Добавляем 4-й элемент
+		c.Set("d", 4)
+		// очередь: [d, c, b]
+
+		// Проверяем, что 'a' вытолкнут
+		val, ok = c.Get("a")
+		require.False(t, ok)
+		require.Nil(t, val)
+
+		// Проверяем, что остальные элементы на месте
+		val, ok = c.Get("b")
+		require.True(t, ok)
+		require.Equal(t, 2, val)
+
+		val, ok = c.Get("c")
+		require.True(t, ok)
+		require.Equal(t, 33, val)
+
+		val, ok = c.Get("d")
+		require.True(t, ok)
+		require.Equal(t, 4, val)
 	})
 }
 
