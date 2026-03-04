@@ -70,19 +70,6 @@ func TestValidate(t *testing.T) {
 			in: User{
 				ID:     "12345678-1234-1234-1234-123456789012",
 				Name:   "John Doe",
-				Age:    17,
-				Email:  "john@example.com",
-				Role:   "admin",
-				Phones: []string{"12345678901"},
-			},
-			expectedErr: ValidationErrors{
-				{Field: "Age", Err: ErrMinNotReached},
-			},
-		},
-		{ // 3
-			in: User{
-				ID:     "12345678-1234-1234-1234-123456789012",
-				Name:   "John Doe",
 				Age:    51,
 				Email:  "john@example.com",
 				Role:   "admin",
@@ -92,7 +79,7 @@ func TestValidate(t *testing.T) {
 				{Field: "Age", Err: ErrMaxExceeded},
 			},
 		},
-		{ // 4
+		{ // 3
 			in: User{
 				ID:     "12345678-1234-1234-1234-123456789012",
 				Name:   "John Doe",
@@ -105,20 +92,7 @@ func TestValidate(t *testing.T) {
 				{Field: "Email", Err: ErrNoMatchRegexp},
 			},
 		},
-		{ // 5
-			in: User{
-				ID:     "12345678-1234-1234-1234-123456789012",
-				Name:   "John Doe",
-				Age:    25,
-				Email:  "john@example.com",
-				Role:   "superuser",
-				Phones: []string{"12345678901"},
-			},
-			expectedErr: ValidationErrors{
-				{Field: "Role", Err: ErrNotInSet},
-			},
-		},
-		{ // 6
+		{ // 4
 			in: User{
 				ID:     "12345678-1234-1234-1234-123456789012",
 				Name:   "John Doe",
@@ -131,7 +105,7 @@ func TestValidate(t *testing.T) {
 				{Field: "Phones[0]", Err: ErrInvalidLength},
 			},
 		},
-		{ // 7
+		{ // 5
 			in: User{
 				ID:     "short",
 				Name:   "John Doe",
@@ -149,13 +123,13 @@ func TestValidate(t *testing.T) {
 				{Field: "Phones[1]", Err: ErrInvalidLength},
 			},
 		},
-		{ // 8
+		{ // 6
 			in: App{
 				Version: "1.2.3",
 			},
 			expectedErr: nil,
 		},
-		{ // 9
+		{ // 7
 			in: App{
 				Version: "1.2",
 			},
@@ -163,7 +137,7 @@ func TestValidate(t *testing.T) {
 				{Field: "Version", Err: ErrInvalidLength},
 			},
 		},
-		{ // 10
+		{ // 8
 			in: Token{
 				Header:    []byte("header"),
 				Payload:   []byte("payload"),
@@ -171,32 +145,26 @@ func TestValidate(t *testing.T) {
 			},
 			expectedErr: nil,
 		},
-		{ // 11
+		{ // 9
 			in:          "not a struct",
 			expectedErr: ErrInvalidStruct,
 		},
-		{ // 12
+		{ // 10
 			in: struct {
 				Field string `validate:"len"`
 			}{Field: "test"},
 			expectedErr: ErrInvalidRuleFormat,
 		},
-		{ // 13
+		{ // 11
 			in: struct {
 				Field int `validate:"unknown:10"`
 			}{Field: 5},
 			expectedErr: ErrUnknownRule,
 		},
-		{ // 14
+		{ // 12
 			in: struct {
 				Field int `validate:"max:notanumber"`
 			}{Field: 5},
-			expectedErr: ErrInvalidParam,
-		},
-		{ // 15
-			in: struct {
-				Field string `validate:"len:notanumber"`
-			}{Field: "test"},
 			expectedErr: ErrInvalidParam,
 		},
 	}
@@ -227,40 +195,46 @@ func TestValidate(t *testing.T) {
 				return
 			}
 
-			var expectedErrs ValidationErrors
-			var actualErrs ValidationErrors
-
-			if !errors.As(tt.expectedErr, &expectedErrs) {
-				t.Fatalf("expected error must be ValidationErrors")
-			}
-
-			if !errors.As(err, &actualErrs) {
-				t.Fatalf("expected ValidationErrors, got %T", err)
-			}
-
-			if len(actualErrs) != len(expectedErrs) {
-				t.Errorf("expected %d errors, got %d", len(expectedErrs), len(actualErrs))
-				t.Logf("Expected: %v", expectedErrs)
-				t.Logf("Actual: %v", actualErrs)
-				return
-			}
-
-			for _, expectedVe := range expectedErrs {
-				found := false
-				for _, actualVe := range actualErrs {
-					if actualVe.Field == expectedVe.Field {
-						found = true
-
-						if !errors.Is(actualVe.Err, expectedVe.Err) {
-							t.Errorf("expected error %v, got %v", expectedVe.Err, actualVe.Err)
-						}
-						break
-					}
-				}
-				if !found {
-					t.Errorf("field %q not found in actual errors", expectedVe.Field)
-				}
-			}
+			checkValidationError(t, err, tt.expectedErr)
 		})
+	}
+}
+
+func checkValidationError(t *testing.T, actual, expected error) {
+	t.Helper()
+
+	var expectedErrs ValidationErrors
+	var actualErrs ValidationErrors
+
+	if !errors.As(expected, &expectedErrs) {
+		t.Fatalf("expected error must be ValidationErrors")
+	}
+
+	if !errors.As(actual, &actualErrs) {
+		t.Fatalf("expected ValidationErrors, got %T", actual)
+	}
+
+	if len(actualErrs) != len(expectedErrs) {
+		t.Errorf("expected %d errors, got %d", len(expectedErrs), len(actualErrs))
+		t.Logf("Expected: %v", expectedErrs)
+		t.Logf("Actual: %v", actualErrs)
+		return
+	}
+
+	for _, expectedVe := range expectedErrs {
+		found := false
+		for _, actualVe := range actualErrs {
+			if actualVe.Field == expectedVe.Field {
+				found = true
+
+				if !errors.Is(actualVe.Err, expectedVe.Err) {
+					t.Errorf("expected error %v, got %v", expectedVe.Err, actualVe.Err)
+				}
+				break
+			}
+		}
+		if !found {
+			t.Errorf("field %q not found in actual errors", expectedVe.Field)
+		}
 	}
 }

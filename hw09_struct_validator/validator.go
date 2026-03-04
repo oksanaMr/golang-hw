@@ -71,6 +71,7 @@ func Validate(v interface{}) error {
 			ruleName := parts[0]
 			ruleParam := parts[1]
 
+			//exhaustive:ignore
 			switch field.Kind() {
 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 
@@ -88,33 +89,9 @@ func Validate(v interface{}) error {
 
 			case reflect.Slice:
 
-				elementType := field.Type().Elem()
-				switch elementType.Kind() {
-				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-
-					for j := 0; j < field.Len(); j++ {
-						elem := field.Index(j)
-						elemName := fmt.Sprintf("%s[%d]", fieldName, j)
-
-						err := validateInt(elemName, elem, ruleName, ruleParam, &errors)
-						if err != nil {
-							return err
-						}
-					}
-
-				case reflect.String:
-
-					for j := 0; j < field.Len(); j++ {
-						elem := field.Index(j)
-						elemName := fmt.Sprintf("%s[%d]", fieldName, j)
-
-						err := validateString(elemName, elem, ruleName, ruleParam, &errors)
-						if err != nil {
-							return err
-						}
-					}
-				default:
-					continue
+				err := validateSlise(fieldName, field, ruleName, ruleParam, &errors)
+				if err != nil {
+					return err
 				}
 
 			default:
@@ -129,7 +106,47 @@ func Validate(v interface{}) error {
 	return errors
 }
 
-func validateInt(fieldName string, field reflect.Value, ruleName string, ruleParam string, errors *ValidationErrors) error {
+func validateSlise(
+	fieldName string, field reflect.Value,
+	ruleName string, ruleParam string,
+	errors *ValidationErrors,
+) error {
+	elementType := field.Type().Elem()
+
+	//exhaustive:ignore
+	switch elementType.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+
+		for j := 0; j < field.Len(); j++ {
+			elem := field.Index(j)
+			elemName := fmt.Sprintf("%s[%d]", fieldName, j)
+
+			err := validateInt(elemName, elem, ruleName, ruleParam, errors)
+			if err != nil {
+				return err
+			}
+		}
+
+	case reflect.String:
+
+		for j := 0; j < field.Len(); j++ {
+			elem := field.Index(j)
+			elemName := fmt.Sprintf("%s[%d]", fieldName, j)
+
+			err := validateString(elemName, elem, ruleName, ruleParam, errors)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func validateInt(
+	fieldName string, field reflect.Value,
+	ruleName string, ruleParam string,
+	errors *ValidationErrors,
+) error {
 	switch ruleName {
 	case "max":
 		return validateMax(fieldName, field.Int(), ruleParam, errors)
@@ -142,7 +159,11 @@ func validateInt(fieldName string, field reflect.Value, ruleName string, rulePar
 	}
 }
 
-func validateString(fieldName string, field reflect.Value, ruleName string, ruleParam string, errors *ValidationErrors) error {
+func validateString(
+	fieldName string, field reflect.Value,
+	ruleName string, ruleParam string,
+	errors *ValidationErrors,
+) error {
 	switch ruleName {
 	case "len":
 		return validateLen(fieldName, field.String(), ruleParam, errors)
