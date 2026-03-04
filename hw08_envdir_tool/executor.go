@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,6 +18,7 @@ func RunCmd(cmd []string, env Environment) (returnCode int) {
 		}
 	}
 
+	//nolint:gosec
 	newCmd := exec.Command(cmd[0], cmd[1:]...)
 	newCmd.Stdin = os.Stdin
 	newCmd.Stdout = os.Stdout
@@ -25,7 +27,8 @@ func RunCmd(cmd []string, env Environment) (returnCode int) {
 
 	if err := newCmd.Run(); err != nil {
 		fmt.Print(err)
-		if exitError, ok := err.(*exec.ExitError); ok {
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
 			return exitError.ExitCode()
 		}
 		return 1

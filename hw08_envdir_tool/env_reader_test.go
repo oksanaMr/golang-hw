@@ -50,18 +50,18 @@ func TestReadDir(t *testing.T) {
 
 	// Создаем файлы
 	for _, tc := range testCases {
-		err := os.WriteFile(filepath.Join(tmpDir, tc.name), []byte(tc.content), 0644)
+		err := os.WriteFile(filepath.Join(tmpDir, tc.name), []byte(tc.content), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	err := os.Mkdir(filepath.Join(tmpDir, "SUBDIR"), 0755)
+	err := os.Mkdir(filepath.Join(tmpDir, "SUBDIR"), 0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = os.WriteFile(filepath.Join(tmpDir, "BAD=NAME"), []byte("ignored"), 0644)
+	err = os.WriteFile(filepath.Join(tmpDir, "BAD=NAME"), []byte("ignored"), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
