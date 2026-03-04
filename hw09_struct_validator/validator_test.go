@@ -171,33 +171,43 @@ func TestValidate(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
-			err := Validate(tt.in)
-
-			if tt.expectedErr == nil {
-				if err != nil {
-					t.Errorf("expected no error, got %v", err)
-				}
-				return
-			}
-
-			if err == nil {
-				t.Errorf("expected error %v, got nil", tt.expectedErr)
-				return
-			}
-
-			if errors.Is(tt.expectedErr, ErrInvalidStruct) ||
-				errors.Is(tt.expectedErr, ErrInvalidRuleFormat) ||
-				errors.Is(tt.expectedErr, ErrUnknownRule) ||
-				errors.Is(tt.expectedErr, ErrInvalidParam) {
-				if !errors.Is(err, tt.expectedErr) {
-					t.Errorf("expected error %v, got %v", tt.expectedErr, err)
-				}
-				return
-			}
-
-			checkValidationError(t, err, tt.expectedErr)
+			check(t, tt)
 		})
 	}
+}
+
+func check(t *testing.T, tt struct {
+	in          interface{}
+	expectedErr error
+},
+) {
+	t.Helper()
+
+	err := Validate(tt.in)
+
+	if tt.expectedErr == nil {
+		if err != nil {
+			t.Errorf("expected no error, got %v", err)
+		}
+		return
+	}
+
+	if err == nil {
+		t.Errorf("expected error %v, got nil", tt.expectedErr)
+		return
+	}
+
+	if errors.Is(tt.expectedErr, ErrInvalidStruct) ||
+		errors.Is(tt.expectedErr, ErrInvalidRuleFormat) ||
+		errors.Is(tt.expectedErr, ErrUnknownRule) ||
+		errors.Is(tt.expectedErr, ErrInvalidParam) {
+		if !errors.Is(err, tt.expectedErr) {
+			t.Errorf("expected error %v, got %v", tt.expectedErr, err)
+		}
+		return
+	}
+
+	checkValidationError(t, err, tt.expectedErr)
 }
 
 func checkValidationError(t *testing.T, actual, expected error) {
