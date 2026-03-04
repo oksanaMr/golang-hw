@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -192,7 +191,7 @@ func validateIn(fieldName string, fieldValue string, param string, errors *Valid
 		return fmt.Errorf("%w: in:%s", ErrInvalidParam, param)
 	}
 
-	if !slices.Contains(in, fieldValue) {
+	if !Contains(in, fieldValue) {
 		*errors = append(*errors, ValidationError{
 			Field: fieldName,
 			Err:   fmt.Errorf("%w: %s ", ErrNotInSet, fieldValue),
@@ -229,4 +228,13 @@ func validateRegexp(fieldName string, fieldValue string, param string, errors *V
 		})
 	}
 	return nil
+}
+
+func Contains(slice []string, element string) bool {
+	for _, v := range slice {
+		if v == element {
+			return true
+		}
+	}
+	return false
 }
