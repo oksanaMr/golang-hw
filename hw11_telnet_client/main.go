@@ -10,9 +10,7 @@ import (
 	"time"
 )
 
-var (
-	timeout time.Duration
-)
+var timeout time.Duration
 
 func init() {
 	flag.DurationVar(&timeout, "timeout", 10*time.Second, "timeout period (e.g., 300ms, 2h45m, 15s)")
