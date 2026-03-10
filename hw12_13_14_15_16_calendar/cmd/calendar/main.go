@@ -30,7 +30,10 @@ func main() {
 	}
 
 	config := NewConfig()
-	config.readConfig(configFile)
+	err := config.readConfig(configFile)
+	if err != nil {
+		panic(err)
+	}
 
 	logg, err := logger.New(config.Logger.Level)
 	if err != nil {
