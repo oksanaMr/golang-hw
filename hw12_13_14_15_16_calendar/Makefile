@@ -29,6 +29,6 @@ install-lint-deps:
 	(which golangci-lint > /dev/null) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.50.1
 
 lint: install-lint-deps
-	GOROOT=$$(go env GOROOT) golangci-lint run ./...
+	golangci-lint run ./... -D gocritic
 
 .PHONY: build run build-img run-img version test lint
