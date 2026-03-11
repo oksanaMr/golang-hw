@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v4/stdlib" //nolint:revive
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/model"
 	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage"
 )
 
@@ -36,7 +37,7 @@ func (s *PostgresStorage) Close() error {
 	return s.db.Close()
 }
 
-func (s *PostgresStorage) Create(ctx context.Context, event storage.Event) (storage.Event, error) {
+func (s *PostgresStorage) Create(ctx context.Context, event model.Event) (model.Event, error) {
 	query := `
 	INSERT INTO events (
 		id, title, event_time, duration, description, user_id, notify_before
@@ -49,7 +50,7 @@ func (s *PostgresStorage) Create(ctx context.Context, event storage.Event) (stor
 		event.ID = uuid.New()
 	}
 
-	var created storage.Event
+	var created model.Event
 	err := s.db.QueryRowContext(
 		ctx, query,
 		event.ID, event.Title, event.EventTime,
@@ -63,15 +64,15 @@ func (s *PostgresStorage) Create(ctx context.Context, event storage.Event) (stor
 	if err != nil {
 		// Проверяем на нарушение уникальности
 		if isDuplicateError(err) {
-			return storage.Event{}, storage.ErrEventAlreadyExists
+			return model.Event{}, model.ErrEventAlreadyExists
 		}
-		return storage.Event{}, fmt.Errorf("failed to create event: %w", err)
+		return model.Event{}, fmt.Errorf("failed to create event: %w", err)
 	}
 
 	return created, nil
 }
 
-func (s *PostgresStorage) Update(ctx context.Context, id uuid.UUID, event storage.Event) (storage.Event, error) {
+func (s *PostgresStorage) Update(ctx context.Context, id uuid.UUID, event model.Event) (model.Event, error) {
 	query := `
 	UPDATE events 
 	SET title = $2, event_time = $3, duration = $4, 
@@ -81,7 +82,7 @@ func (s *PostgresStorage) Update(ctx context.Context, id uuid.UUID, event storag
 	RETURNING id, title, event_time, duration, description, user_id, notify_before
 	`
 
-	var updated storage.Event
+	var updated model.Event
 	err := s.db.QueryRowContext(
 		ctx, query,
 		id, event.Title, event.EventTime, event.Duration,
@@ -93,9 +94,9 @@ func (s *PostgresStorage) Update(ctx context.Context, id uuid.UUID, event storag
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return storage.Event{}, storage.ErrEventNotFound
+			return model.Event{}, model.ErrEventNotFound
 		}
-		return storage.Event{}, fmt.Errorf("failed to update event: %w", err)
+		return model.Event{}, fmt.Errorf("failed to update event: %w", err)
 	}
 
 	return updated, nil
@@ -115,20 +116,20 @@ func (s *PostgresStorage) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 
 	if rows == 0 {
-		return storage.ErrEventNotFound
+		return model.ErrEventNotFound
 	}
 
 	return nil
 }
 
-func (s *PostgresStorage) GetByID(ctx context.Context, id uuid.UUID) (storage.Event, error) {
+func (s *PostgresStorage) GetByID(ctx context.Context, id uuid.UUID) (model.Event, error) {
 	query := `
 	SELECT id, title, event_time, duration, description, user_id, notify_before
 	FROM events
 	WHERE id = $1
 	`
 
-	var event storage.Event
+	var event model.Event
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&event.ID, &event.Title, &event.EventTime,
 		&event.Duration, &event.Description, &event.UserID,
@@ -136,15 +137,15 @@ func (s *PostgresStorage) GetByID(ctx context.Context, id uuid.UUID) (storage.Ev
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return storage.Event{}, storage.ErrEventNotFound
+			return model.Event{}, model.ErrEventNotFound
 		}
-		return storage.Event{}, fmt.Errorf("failed to get event: %w", err)
+		return model.Event{}, fmt.Errorf("failed to get event: %w", err)
 	}
 
 	return event, nil
 }
 
-func (s *PostgresStorage) ListByDay(ctx context.Context, date time.Time) ([]storage.Event, error) {
+func (s *PostgresStorage) ListByDay(ctx context.Context, date time.Time) ([]model.Event, error) {
 	// Начало и конец указанного дня
 	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	endOfDay := startOfDay.AddDate(0, 0, 1)
@@ -160,7 +161,7 @@ func (s *PostgresStorage) ListByDay(ctx context.Context, date time.Time) ([]stor
 	return s.queryEvents(ctx, query, startOfDay, endOfDay)
 }
 
-func (s *PostgresStorage) ListByWeek(ctx context.Context, date time.Time) ([]storage.Event, error) {
+func (s *PostgresStorage) ListByWeek(ctx context.Context, date time.Time) ([]model.Event, error) {
 	// Находим начало недели (понедельник)
 	weekday := date.Weekday()
 	var startOfWeek time.Time
@@ -185,7 +186,7 @@ func (s *PostgresStorage) ListByWeek(ctx context.Context, date time.Time) ([]sto
 	return s.queryEvents(ctx, query, startOfWeek, endOfWeek)
 }
 
-func (s *PostgresStorage) ListByMonth(ctx context.Context, date time.Time) ([]storage.Event, error) {
+func (s *PostgresStorage) ListByMonth(ctx context.Context, date time.Time) ([]model.Event, error) {
 	// Начало месяца
 	startOfMonth := time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, date.Location())
 	// Начало следующего месяца
@@ -201,7 +202,7 @@ func (s *PostgresStorage) ListByMonth(ctx context.Context, date time.Time) ([]st
 	return s.queryEvents(ctx, query, startOfMonth, endOfMonth)
 }
 
-func (s *PostgresStorage) ListByUser(ctx context.Context, userID uuid.UUID) ([]storage.Event, error) {
+func (s *PostgresStorage) ListByUser(ctx context.Context, userID uuid.UUID) ([]model.Event, error) {
 	query := `
 	SELECT id, title, event_time, duration, description, user_id, notify_before
 	FROM events
@@ -214,7 +215,7 @@ func (s *PostgresStorage) ListByUser(ctx context.Context, userID uuid.UUID) ([]s
 
 func (s *PostgresStorage) ListByUserAndPeriod(
 	ctx context.Context, userID uuid.UUID, start, end time.Time,
-) ([]storage.Event, error) {
+) ([]model.Event, error) {
 	query := `
 	SELECT id, title, event_time, duration, description, user_id, notify_before
 	FROM events
@@ -225,16 +226,16 @@ func (s *PostgresStorage) ListByUserAndPeriod(
 	return s.queryEvents(ctx, query, userID, start, end)
 }
 
-func (s *PostgresStorage) queryEvents(ctx context.Context, query string, args ...interface{}) ([]storage.Event, error) {
+func (s *PostgresStorage) queryEvents(ctx context.Context, query string, args ...interface{}) ([]model.Event, error) {
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query events: %w", err)
 	}
 	defer rows.Close()
 
-	var events []storage.Event
+	var events []model.Event
 	for rows.Next() {
-		var event storage.Event
+		var event model.Event
 		err := rows.Scan(
 			&event.ID, &event.Title, &event.EventTime,
 			&event.Duration, &event.Description, &event.UserID,

@@ -1,0 +1,436 @@
+openapi: 3.0.0
+info:
+  title: Calendar Service API
+  description: HTTP API для управления событиями календаря
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@calendar.local
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: /api/v1
+    description: Базовый путь API (относительный)
+
+tags:
+  - name: Events
+    description: Управление событиями календаря
+
+paths:
+  /events:
+    post:
+      tags: [Events]
+      summary: Создать новое событие
+      operationId: createEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+      responses:
+        '201':
+          description: Событие успешно создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags: [Events]
+      summary: Получить список событий за указанный день
+      operationId: listEventsByDay
+      parameters:
+        - name: date
+          in: query
+          required: true
+          description: Дата в формате YYYY-MM-DD
+          schema:
+            type: string
+            format: date
+            example: "2024-03-15"
+      responses:
+        '200':
+          description: Список событий
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+        '400':
+          description: Неверный формат даты
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/{id}:
+    get:
+      tags: [Events]
+      summary: Получить событие по ID
+      operationId: getEventById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID события
+          schema:
+            type: string
+            format: uuid
+            example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: Событие найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          description: Событие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags: [Events]
+      summary: Обновить существующее событие
+      operationId: updateEvent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID события
+          schema:
+            type: string
+            format: uuid
+            example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEventRequest'
+      responses:
+        '200':
+          description: Событие успешно обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Событие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Events]
+      summary: Удалить событие
+      operationId: deleteEvent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID события
+          schema:
+            type: string
+            format: uuid
+            example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '204':
+          description: Событие успешно удалено (нет содержимого)
+        '404':
+          description: Событие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/week/{date}:
+    get:
+      tags: [Events]
+      summary: Получить события за неделю, содержащую указанную дату
+      operationId: listEventsByWeek
+      parameters:
+        - name: date
+          in: path
+          required: true
+          description: Любая дата в формате YYYY-MM-DD внутри нужной недели
+          schema:
+            type: string
+            format: date
+            example: "2024-03-15"
+      responses:
+        '200':
+          description: Список событий за неделю
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+        '400':
+          description: Неверный формат даты
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/month/{date}:
+    get:
+      tags: [Events]
+      summary: Получить события за месяц, содержащий указанную дату
+      operationId: listEventsByMonth
+      parameters:
+        - name: date
+          in: path
+          required: true
+          description: Любая дата в формате YYYY-MM-DD внутри нужного месяца
+          schema:
+            type: string
+            format: date
+            example: "2024-03-15"
+      responses:
+        '200':
+          description: Список событий за месяц
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+        '400':
+          description: Неверный формат даты
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Event:
+      type: object
+      description: Полная модель события календаря
+      required:
+        - id
+        - title
+        - eventTime
+        - userId
+        - duration
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор события
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Заголовок события
+          example: "Встреча с командой"
+        eventTime:
+          type: string
+          format: date-time
+          description: Дата и время события в формате RFC3339
+          example: "2024-03-15T14:30:00Z"
+        duration:
+          type: string
+          description: Длительность события (формат длительности Go)
+          example: "1h30m"
+        description:
+          type: string
+          description: Подробное описание события (опционально)
+          example: "Обсуждение архитектуры проекта"
+        userId:
+          type: string
+          format: uuid
+          description: ID пользователя-владельца события
+          example: "223e4567-e89b-12d3-a456-426614174001"
+        notifyBefore:
+          type: string
+          description: За сколько времени выслать уведомление (0 - без уведомления)
+          example: "30m"
+          default: "0s"
+
+    CreateEventRequest:
+      type: object
+      description: Данные для создания нового события
+      required:
+        - title
+        - eventTime
+        - userId
+        - duration
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Новое событие"
+        eventTime:
+          type: string
+          format: date-time
+          example: "2024-03-15T14:30:00Z"
+        duration:
+          type: string
+          example: "1h"
+          default: "0s"
+        description:
+          type: string
+          example: "Описание нового события"
+        userId:
+          type: string
+          format: uuid
+          example: "223e4567-e89b-12d3-a456-426614174001"
+        notifyBefore:
+          type: string
+          example: "15m"
+          default: "0s"
+
+    UpdateEventRequest:
+      type: object
+      description: Данные для обновления события (все поля опциональны)
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Обновленный заголовок"
+        eventTime:
+          type: string
+          format: date-time
+          example: "2024-03-15T16:00:00Z"
+        duration:
+          type: string
+          example: "2h"
+        description:
+          type: string
+          example: "Обновленное описание"
+        userId:
+          type: string
+          format: uuid
+          example: "223e4567-e89b-12d3-a456-426614174001"
+        notifyBefore:
+          type: string
+          example: "1h"
+
+    Error:
+      type: object
+      description: Стандартный формат ошибки
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: HTTP статус код
+          example: 400
+        message:
+          type: string
+          description: Описание ошибки
+          example: "Неверный формат даты. Ожидается YYYY-MM-DD"
+        details:
+          type: string
+          description: Дополнительная информация об ошибке
+          example: "передано значение: '2024/03/15'"
+
+  parameters:
+    DateParam:
+      name: date
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+      description: Дата в формате YYYY-MM-DD
+      example: "2024-03-15"
+
+    EventIdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: UUID события
+      example: "123e4567-e89b-12d3-a456-426614174000"
+
+  responses:
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadRequest:
+      description: Неверный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
