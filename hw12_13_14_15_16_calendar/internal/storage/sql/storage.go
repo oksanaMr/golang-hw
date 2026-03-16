@@ -14,6 +14,7 @@ import (
 )
 
 var _ storage.EventStorage = (*PostgresStorage)(nil)
+var _ storage.NotificationStorage = (*PostgresStorage)(nil)
 
 type PostgresStorage struct {
 	db *sql.DB
@@ -263,4 +264,32 @@ func isDuplicateError(err error) bool {
 		return pqErr.SQLState() == "23505"
 	}
 	return false
+}
+
+func (s *PostgresStorage) SaveNotification(ctx context.Context, notification *model.Notification) (model.Notification, error) {
+	query := `
+	INSERT INTO notifications (id, event_id, user_id, title, event_time) 
+         VALUES ($1, $2, $3, $4, $5)
+	RETURNING id, event_id, user_id, title, event_time
+	`
+
+	// Генерируем новый UUID, если не задан
+	if notification.ID == uuid.Nil {
+		notification.ID = uuid.New()
+	}
+
+	var created model.Notification
+	err := s.db.QueryRowContext(
+		ctx, query,
+		notification.ID, notification.EventID, notification.UserID,
+		notification.Title, notification.EventTime,
+	).Scan(
+		&created.ID, &created.EventID, &created.UserID,
+		&created.Title, &created.EventTime,
+	)
+	if err != nil {
+		return model.Notification{}, fmt.Errorf("failed to create event: %w", err)
+	}
+
+	return created, nil
 }

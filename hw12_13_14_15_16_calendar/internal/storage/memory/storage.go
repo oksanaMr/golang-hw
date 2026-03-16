@@ -11,6 +11,7 @@ import (
 )
 
 var _ storage.EventStorage = (*InMemoryStorage)(nil)
+var _ storage.NotificationStorage = (*InMemoryStorage)(nil)
 
 type InMemoryStorage struct {
 	mu     sync.RWMutex
@@ -132,4 +133,12 @@ func (s *InMemoryStorage) ListByMonth(_ context.Context, date time.Time) ([]mode
 	}
 
 	return result, nil
+}
+
+func (s *InMemoryStorage) SaveNotification(ctx context.Context, notification *model.Notification) (model.Notification, error) {
+	return *notification, nil
+}
+
+func (s *InMemoryStorage) Close() error {
+	return nil
 }

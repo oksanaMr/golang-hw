@@ -35,7 +35,7 @@ func main() {
 		panic(err)
 	}
 
-	logg, err := logger.New(config.Logger.Level)
+	logg, err := logger.New(config.Logger.Level, config.Logger.Filename)
 	if err != nil {
 		panic(err)
 	}
@@ -45,13 +45,14 @@ func main() {
 	if config.Storage.Mode == "in-memory" {
 		storage = memorystorage.New()
 	} else {
-		storage, err := sqlstorage.New(config.Storage.Dsn)
+		var err error
+		storage, err = sqlstorage.New(config.Storage.Dsn)
 		if err != nil {
 			logg.Error(err.Error())
 			panic(err)
 		}
-		defer storage.Close()
 	}
+	defer storage.Close()
 
 	calendar := app.New(logg, storage)
 

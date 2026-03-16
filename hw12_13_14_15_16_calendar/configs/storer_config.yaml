@@ -1,0 +1,15 @@
+logger:
+  level: INFO
+  filename: "logs/calendar_storer.log"
+
+storage:
+  mode: sql
+  dsn: postgres://postgres:123456@localhost:5432/template2?search_path=calendar&sslmode=disable
+
+kafka:
+  brokers:
+    - localhost:9092
+  group-id: storer-group
+  timeout: 10s
+  topics:
+    topic_notifications: notifications
