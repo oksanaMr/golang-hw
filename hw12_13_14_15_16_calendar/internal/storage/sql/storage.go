@@ -13,8 +13,7 @@ import (
 	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage"
 )
 
-var _ storage.EventStorage = (*PostgresStorage)(nil)
-var _ storage.NotificationStorage = (*PostgresStorage)(nil)
+var _ storage.Storage = (*PostgresStorage)(nil)
 
 type PostgresStorage struct {
 	db *sql.DB
@@ -292,4 +291,38 @@ func (s *PostgresStorage) SaveNotification(ctx context.Context, notification *mo
 	}
 
 	return created, nil
+}
+
+func (s *PostgresStorage) GetTotalNotifications(ctx context.Context) (int64, error) {
+	query := `
+	SELECT COUNT(*) 
+	FROM notifications
+	`
+	var count int64
+	err := s.db.QueryRowContext(ctx, query).Scan(&count)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to count total notifications: %w", err)
+	}
+
+	return count, nil
+}
+
+func (s *PostgresStorage) GetTodayNotifications(ctx context.Context, date time.Time) (int64, error) {
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	endOfDay := startOfDay.AddDate(0, 0, 1)
+
+	query := `
+	SELECT COUNT(*) 
+	FROM notifications
+	WHERE event_time >= $1 AND event_time < $2
+	`
+	var count int64
+	err := s.db.QueryRowContext(ctx, query, startOfDay, endOfDay).Scan(&count)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to count notifications: %w", err)
+	}
+
+	return count, nil
 }
