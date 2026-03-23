@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -34,12 +35,59 @@ func (h *StrictCalendarHandler) CreateEvent(
 		}, nil
 	}
 
+	// Валидация обязательных полей
+	if request.Body.Title == "" {
+		return api.CreateEvent400JSONResponse{
+			Code:    400,
+			Message: "Title is required",
+		}, nil
+	}
+
+	if request.Body.UserId.String() == "" {
+		return api.CreateEvent400JSONResponse{
+			Code:    400,
+			Message: "User ID is required",
+		}, nil
+	}
+
+	if request.Body.EventTime.IsZero() {
+		return api.CreateEvent400JSONResponse{
+			Code:    400,
+			Message: "Event time is required",
+		}, nil
+	}
+
+	if request.Body.Duration == "" {
+		return api.CreateEvent400JSONResponse{
+			Code:    400,
+			Message: "Duration is required",
+		}, nil
+	}
+
+	// Валидация формата duration
+	if _, err := time.ParseDuration(request.Body.Duration); err != nil {
+		return api.CreateEvent400JSONResponse{
+			Code:    400,
+			Message: "Invalid duration format. Use Go duration format (e.g., '1h30m', '45m')",
+		}, nil
+	}
+
+	// Валидация формата notifyBefore (если указан)
+	if request.Body.NotifyBefore != nil {
+		if _, err := time.ParseDuration(*request.Body.NotifyBefore); err != nil {
+			return api.CreateEvent400JSONResponse{
+				Code:    400,
+				Message: "Invalid notifyBefore format. Use Go duration format (e.g., '30m', '1h')",
+			}, nil
+		}
+	}
+
 	createdEvent, err := h.app.CreateEvent(ctx, request.Body.Duration, request.Body.Description,
 		request.Body.NotifyBefore, request.Body.EventTime, request.Body.Title, request.Body.UserId)
 	if err != nil {
 		if errors.Is(err, model.ErrEventAlreadyExists) {
 			return api.CreateEvent400JSONResponse{
-				Code:    404,
+				Code:    400,
 				Message: "Event already exists",
 			}, nil
 		}
@@ -93,7 +141,7 @@ func (h *StrictCalendarHandler) UpdateEvent(
 		request.Body.NotifyBefore, request.Body.Title, request.Body.EventTime, request.Body.UserId)
 	if err != nil {
 		if errors.Is(err, model.ErrEventNotFound) {
-			return api.UpdateEvent400JSONResponse{
+			return api.UpdateEvent404JSONResponse{
 				Code:    404,
 				Message: "Event not found",
 			}, nil
