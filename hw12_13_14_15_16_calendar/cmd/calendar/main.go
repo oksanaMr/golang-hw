@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/fixme_my_friend/hw12_13_14_15_16_calendar/internal/app"
-	"github.com/fixme_my_friend/hw12_13_14_15_16_calendar/internal/logger"
-	internalhttp "github.com/fixme_my_friend/hw12_13_14_15_16_calendar/internal/server/http"
-	memorystorage "github.com/fixme_my_friend/hw12_13_14_15_16_calendar/internal/storage/memory"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/app"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/logger"
+	internalhttp "github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/server/http"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage"
+	memorystorage "github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage/memory"
+	sqlstorage "github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage/sql"
 )
 
 var configFile string
@@ -29,10 +30,30 @@ func main() {
 	}
 
 	config := NewConfig()
-	logg := logger.New(config.Logger.Level)
+	err := config.readConfig(configFile)
+	if err != nil {
+		panic(err)
+	}
 
-	storage := memorystorage.New()
-	calendar := app.New(logg, storage)
+	logg, err := logger.New(config.Logger.Level)
+	if err != nil {
+		panic(err)
+	}
+	defer logg.Close()
+
+	var storage storage.EventStorage
+	if config.Storage.Mode == "in-memory" {
+		storage = memorystorage.New()
+	} else {
+		storage, err := sqlstorage.New(config.Storage.Dsn)
+		if err != nil {
+			logg.Error(err.Error())
+			panic(err)
+		}
+		defer storage.Close()
+	}
+
+	calendar := app.New(storage)
 
 	server := internalhttp.NewServer(logg, calendar)
 
@@ -53,9 +74,9 @@ func main() {
 
 	logg.Info("calendar is running...")
 
-	if err := server.Start(ctx); err != nil {
+	if err := server.Start(ctx, config.Server.Host, config.Server.Port); err != nil {
 		logg.Error("failed to start http server: " + err.Error())
 		cancel()
-		os.Exit(1) //nolint:gocritic
+		panic(err)
 	}
 }

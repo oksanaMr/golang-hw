@@ -1,0 +1,3 @@
+time=2026-03-10T11:39:07.456+03:00 level=INFO msg="calendar is running..."
+time=2026-03-10T11:39:07.477+03:00 level=INFO msg="Server starting..."
+time=2026-03-10T11:39:33.522+03:00 level=INFO msg="Stopping server..."
