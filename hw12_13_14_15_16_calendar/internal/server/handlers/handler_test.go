@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -31,7 +32,8 @@ func createTestEvent() model.Event {
 }
 
 func TestCreateEvent(t *testing.T) {
-	logg := logger.NewNoopLogger()
+	tmpDir := t.TempDir()
+	logg, _ := logger.New("INFO", filepath.Join(tmpDir, "test.log"))
 	store := memorystorage.New()
 	calendar := app.New(logg, store)
 	handler := handlers.NewStrictCalendarHandler(calendar)
@@ -63,7 +65,8 @@ func TestCreateEvent(t *testing.T) {
 }
 
 func TestGetEventById(t *testing.T) {
-	logg := logger.NewNoopLogger()
+	tmpDir := t.TempDir()
+	logg, _ := logger.New("INFO", filepath.Join(tmpDir, "test.log"))
 	store := memorystorage.New()
 	calendar := app.New(logg, store)
 	handler := handlers.NewStrictCalendarHandler(calendar)
@@ -89,7 +92,8 @@ func TestGetEventById(t *testing.T) {
 }
 
 func TestGetEventById_NotFound(t *testing.T) {
-	logg := logger.NewNoopLogger()
+	tmpDir := t.TempDir()
+	logg, _ := logger.New("INFO", filepath.Join(tmpDir, "test.log"))
 	store := memorystorage.New()
 	calendar := app.New(logg, store)
 	handler := handlers.NewStrictCalendarHandler(calendar)
@@ -110,7 +114,8 @@ func TestGetEventById_NotFound(t *testing.T) {
 }
 
 func TestUpdateEvent(t *testing.T) {
-	logg := logger.NewNoopLogger()
+	tmpDir := t.TempDir()
+	logg, _ := logger.New("INFO", filepath.Join(tmpDir, "test.log"))
 	store := memorystorage.New()
 	calendar := app.New(logg, store)
 	handler := handlers.NewStrictCalendarHandler(calendar)
@@ -145,7 +150,8 @@ func TestUpdateEvent(t *testing.T) {
 }
 
 func TestDeleteEvent(t *testing.T) {
-	logg := logger.NewNoopLogger()
+	tmpDir := t.TempDir()
+	logg, _ := logger.New("INFO", filepath.Join(tmpDir, "test.log"))
 	store := memorystorage.New()
 	calendar := app.New(logg, store)
 	handler := handlers.NewStrictCalendarHandler(calendar)
@@ -171,7 +177,8 @@ func TestDeleteEvent(t *testing.T) {
 }
 
 func TestListEventsByDay(t *testing.T) {
-	logg := logger.NewNoopLogger()
+	tmpDir := t.TempDir()
+	logg, _ := logger.New("INFO", filepath.Join(tmpDir, "test.log"))
 	store := memorystorage.New()
 	calendar := app.New(logg, store)
 	handler := handlers.NewStrictCalendarHandler(calendar)
