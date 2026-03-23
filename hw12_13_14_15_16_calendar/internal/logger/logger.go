@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 )
@@ -58,4 +59,15 @@ func (l *Logger) Close() error {
 		return l.file.Close()
 	}
 	return nil
+}
+
+func NewNoopLogger() *Logger {
+	handler := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+
+	return &Logger{
+		logger: slog.New(handler),
+		file:   nil,
+	}
 }

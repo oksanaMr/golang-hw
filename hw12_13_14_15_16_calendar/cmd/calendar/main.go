@@ -53,7 +53,7 @@ func main() {
 		defer storage.Close()
 	}
 
-	calendar := app.New(storage)
+	calendar := app.New(logg, storage)
 
 	server := internalhttp.NewServer(logg, calendar)
 
@@ -68,14 +68,14 @@ func main() {
 		defer cancel()
 
 		if err := server.Stop(ctx); err != nil {
-			logg.Error("failed to stop http server: " + err.Error())
+			logg.Error("failed to stop http server", "error", err)
 		}
 	}()
 
 	logg.Info("calendar is running...")
 
 	if err := server.Start(ctx, config.Server.Host, config.Server.Port); err != nil {
-		logg.Error("failed to start http server: " + err.Error())
+		logg.Error("failed to start http server", "error", err)
 		cancel()
 		panic(err)
 	}

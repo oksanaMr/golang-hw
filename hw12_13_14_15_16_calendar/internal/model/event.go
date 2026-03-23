@@ -1,6 +1,7 @@
-package storage
+package model
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -55,3 +56,8 @@ func (e *Event) ShouldNotify() bool {
 func (e *Event) NotificationTime() time.Time {
 	return e.EventTime.Add(-e.NotifyBefore)
 }
+
+var (
+	ErrEventNotFound      = errors.New("event not found")
+	ErrEventAlreadyExists = errors.New("event already exists")
+)
