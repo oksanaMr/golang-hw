@@ -3,13 +3,13 @@ logger:
   filename: "logs/calendar_storer.log"
 
 storage:
-  mode: sql
-  dsn: postgres://postgres:123456@postgres:5432/template2?sslmode=disable
+  mode: "postgres"
+  dsn: "postgres://test:test@postgres:5432/testdb?sslmode=disable"
 
 kafka:
   brokers:
     - kafka:9092
-  group-id: storer-group
+  group-id: "test-group"
   timeout: 10s
   topics:
     topic_notifications: notifications

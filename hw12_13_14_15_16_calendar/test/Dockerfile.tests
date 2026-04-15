@@ -1,0 +1,33 @@
+FROM golang:1.25-alpine AS builder
+
+RUN apk add --no-cache git ca-certificates build-base tzdata
+
+WORKDIR /app
+
+# Копируем go.mod и go.sum для кеширования зависимостей
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Копируем исходный код
+COPY . .
+
+# Собираем тесты
+RUN go test -c ./test -o /integration.test
+
+# Финальный образ для запуска тестов
+FROM alpine:3.19
+
+RUN apk --no-cache add ca-certificates curl
+
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /integration.test /integration.test
+COPY --from=builder /app/test/wait-for-it.sh /test/wait-for-it.sh
+COPY --from=builder /app/configs/test/test_config.yaml /configs/config.yaml
+
+RUN chmod +x /test/wait-for-it.sh
+
+WORKDIR /
+
+ENTRYPOINT ["/integration.test"]
+CMD ["-test.v"]

@@ -37,11 +37,13 @@ func (s *Server) Start(_ context.Context, host, port string) error {
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(s.loggingMiddleware)
 
-	httpHandler := api.HandlerFromMux(handler, r)
+	r.Handle("/metrics", s.metricsHandler())
+
+	r.Mount("/", api.HandlerFromMux(handler, r))
 
 	s.httpServer = &http.Server{ //nolint:gosec
 		Addr:    host + ":" + port,
-		Handler: httpHandler,
+		Handler: r,
 	}
 
 	s.logger.Info("Server starting...")

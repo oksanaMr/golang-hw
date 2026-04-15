@@ -10,8 +10,7 @@ import (
 	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage"
 )
 
-var _ storage.EventStorage = (*InMemoryStorage)(nil)
-var _ storage.NotificationStorage = (*InMemoryStorage)(nil)
+var _ storage.Storage = (*InMemoryStorage)(nil)
 
 type InMemoryStorage struct {
 	mu     sync.RWMutex
@@ -137,6 +136,14 @@ func (s *InMemoryStorage) ListByMonth(_ context.Context, date time.Time) ([]mode
 
 func (s *InMemoryStorage) SaveNotification(ctx context.Context, notification *model.Notification) (model.Notification, error) {
 	return *notification, nil
+}
+
+func (s *InMemoryStorage) GetTotalNotifications(ctx context.Context) (int64, error) {
+	return 1000, nil
+}
+
+func (s *InMemoryStorage) GetTodayNotifications(ctx context.Context, date time.Time) (int64, error) {
+	return 100, nil
 }
 
 func (s *InMemoryStorage) Close() error {

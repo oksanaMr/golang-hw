@@ -3,8 +3,8 @@ logger:
   filename: "logs/calendar.log"
 
 storage:
-  mode: in-memory
-  dsn: postgres://postgres:123456@postgres:5432/template2?sslmode=disable
+  mode: "postgres"
+  dsn: "postgres://test:test@postgres:5432/testdb?sslmode=disable"
 
 server:
   host: "0.0.0.0"
