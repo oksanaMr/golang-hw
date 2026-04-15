@@ -2,20 +2,22 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/logger"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/metrics"
 	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/model"
 	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage"
 )
 
 type App struct {
-	storage storage.EventStorage
+	storage storage.Storage
 	logger  *logger.Logger
 }
 
-func New(logger *logger.Logger, storage storage.EventStorage) *App {
+func New(logger *logger.Logger, storage storage.Storage) *App {
 	return &App{
 		storage: storage,
 		logger:  logger,
@@ -41,6 +43,8 @@ func (a *App) CreateEvent(ctx context.Context, duration string, description, not
 	result, err := a.storage.Create(ctx, event)
 	if err != nil {
 		a.logger.Error("Error create event", "error", err)
+	} else {
+		metrics.EventsCreated.Inc()
 	}
 
 	return result, err
@@ -79,6 +83,8 @@ func (a *App) UpdateEvent(ctx context.Context, id uuid.UUID,
 	result, err := a.storage.Update(ctx, id, existingEvent)
 	if err != nil {
 		a.logger.Error("Error update event", "error", err)
+	} else {
+		metrics.EventsUpdated.Inc()
 	}
 
 	return result, err
@@ -88,6 +94,8 @@ func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 	err := a.storage.Delete(ctx, id)
 	if err != nil {
 		a.logger.Error("Error delete event", "error", err)
+	} else {
+		metrics.EventsDeleted.Inc()
 	}
 
 	return err
@@ -135,4 +143,37 @@ func parseDuration(dur string) time.Duration {
 	}
 	d, _ := time.ParseDuration(dur)
 	return d
+}
+
+func (a *App) UpdateMetrics(ctx context.Context) error {
+	// Получаем количество событий за сегодня
+	todayEvents, err := a.storage.ListByDay(ctx, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to get today events: %w", err)
+	}
+
+	metrics.EventsToday.Set(float64(len(todayEvents)))
+
+	// Получаем общее количество отправленных уведомлений
+	total, err := a.storage.GetTotalNotifications(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get total notifications: %w", err)
+	}
+
+	metrics.NotificationSent.Set(float64(total))
+
+	// Получаем количество уведомлений за сегодня
+	today, err := a.storage.GetTodayNotifications(ctx, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to get today notifications: %w", err)
+	}
+
+	metrics.NotificationsToday.Set(float64(today))
+
+	a.logger.Debug("Metrics updated",
+		"todayE", todayEvents,
+		"totalN", total,
+		"todayN", today)
+
+	return nil
 }
