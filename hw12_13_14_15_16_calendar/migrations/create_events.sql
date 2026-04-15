@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS events (
     duration BIGINT NOT NULL,
     description TEXT,
     user_id UUID NOT NULL,
-    notify_before BIGINT,
+    notify_before BIGINT
 );
 
 -- Индекс для поиска по времени

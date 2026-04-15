@@ -23,6 +23,20 @@ type EventStorage interface {
 
 	ListByMonth(ctx context.Context, date time.Time) ([]model.Event, error)
 
-	// ListByUser(ctx context.Context, userID uuid.UUID) ([]model.Event, error)
-	// ListByUserAndPeriod(ctx context.Context, userID uuid.UUID, start, end time.Time) ([]model.Event, error)
+	Close() error
+}
+
+type NotificationStorage interface {
+	SaveNotification(ctx context.Context, notification *model.Notification) (model.Notification, error)
+
+	GetTotalNotifications(ctx context.Context) (int64, error)
+
+	GetTodayNotifications(ctx context.Context, date time.Time) (int64, error)
+
+	Close() error
+}
+
+type Storage interface {
+	EventStorage
+	NotificationStorage
 }
