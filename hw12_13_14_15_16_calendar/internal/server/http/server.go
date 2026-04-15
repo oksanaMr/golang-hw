@@ -2,12 +2,15 @@ package internalhttp
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/app"
 	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/logger"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/server/api"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/server/handlers"
 )
 
 type Server struct {
@@ -24,14 +27,23 @@ func NewServer(logger *logger.Logger, app *app.App) *Server {
 }
 
 func (s *Server) Start(_ context.Context, host, port string) error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/hello", helloHandler)
+	strictHandler := handlers.NewStrictCalendarHandler(s.app)
+	handler := api.NewStrictHandler(strictHandler, nil)
 
-	handler := s.loggingMiddleware(mux)
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(s.loggingMiddleware)
+
+	r.Handle("/metrics", s.metricsHandler())
+
+	r.Mount("/", api.HandlerFromMux(handler, r))
 
 	s.httpServer = &http.Server{ //nolint:gosec
 		Addr:    host + ":" + port,
-		Handler: handler,
+		Handler: r,
 	}
 
 	s.logger.Info("Server starting...")
@@ -44,9 +56,4 @@ func (s *Server) Start(_ context.Context, host, port string) error {
 func (s *Server) Stop(ctx context.Context) error {
 	s.logger.Info("Stopping server...")
 	return s.httpServer.Shutdown(ctx)
-}
-
-func helloHandler(w http.ResponseWriter, _ *http.Request) {
-	time.Sleep(50 * time.Millisecond)
-	fmt.Fprintf(w, "Hello, World!")
 }

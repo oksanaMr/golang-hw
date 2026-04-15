@@ -11,7 +11,7 @@ type Logger struct {
 	file   *os.File
 }
 
-func New(level string) (*Logger, error) {
+func New(level string, filename string) (*Logger, error) {
 	var slevel slog.Level
 
 	err := slevel.UnmarshalText([]byte(level))
@@ -19,7 +19,7 @@ func New(level string) (*Logger, error) {
 		return nil, fmt.Errorf("error parsing level %s: %w", level, err)
 	}
 
-	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open log file: %w", err)
 	}

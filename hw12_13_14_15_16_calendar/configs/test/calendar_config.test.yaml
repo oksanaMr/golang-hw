@@ -1,0 +1,11 @@
+logger:
+  level: INFO
+  filename: "logs/calendar.log"
+
+storage:
+  mode: "postgres"
+  dsn: "postgres://test:test@postgres:5432/testdb?sslmode=disable"
+
+server:
+  host: "0.0.0.0"
+  port: 8888

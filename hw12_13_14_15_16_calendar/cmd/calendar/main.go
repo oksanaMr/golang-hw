@@ -35,25 +35,26 @@ func main() {
 		panic(err)
 	}
 
-	logg, err := logger.New(config.Logger.Level)
+	logg, err := logger.New(config.Logger.Level, config.Logger.Filename)
 	if err != nil {
 		panic(err)
 	}
 	defer logg.Close()
 
-	var storage storage.EventStorage
+	var storage storage.Storage
 	if config.Storage.Mode == "in-memory" {
 		storage = memorystorage.New()
 	} else {
-		storage, err := sqlstorage.New(config.Storage.Dsn)
+		var err error
+		storage, err = sqlstorage.New(config.Storage.Dsn)
 		if err != nil {
 			logg.Error(err.Error())
 			panic(err)
 		}
-		defer storage.Close()
 	}
+	defer storage.Close()
 
-	calendar := app.New(storage)
+	calendar := app.New(logg, storage)
 
 	server := internalhttp.NewServer(logg, calendar)
 
@@ -61,21 +62,39 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
+	ticker := time.NewTicker(1 * time.Minute)
+
 	go func() {
-		<-ctx.Done()
+		// Сразу обновим метрики при старте
+		if err := calendar.UpdateMetrics(ctx); err != nil {
+			logg.Error("Failed to update metrics on start", "error", err)
+		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		defer cancel()
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
 
-		if err := server.Stop(ctx); err != nil {
-			logg.Error("failed to stop http server: " + err.Error())
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+				defer cancel()
+
+				if err := server.Stop(ctx); err != nil {
+					logg.Error("failed to stop http server", "error", err)
+				}
+				return
+			case <-ticker.C:
+				// Обновляем метрики
+				if err := calendar.UpdateMetrics(ctx); err != nil {
+					logg.Error("Failed to update notification metrics", "error", err)
+				}
+			}
 		}
 	}()
 
 	logg.Info("calendar is running...")
 
 	if err := server.Start(ctx, config.Server.Host, config.Server.Port); err != nil {
-		logg.Error("failed to start http server: " + err.Error())
+		logg.Error("failed to start http server", "error", err)
 		cancel()
 		panic(err)
 	}
