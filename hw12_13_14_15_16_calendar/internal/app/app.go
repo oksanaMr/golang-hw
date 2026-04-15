@@ -2,25 +2,178 @@ package app
 
 import (
 	"context"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/logger"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/metrics"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/model"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage"
 )
 
-type App struct { // TODO
+type App struct {
+	storage storage.Storage
+	logger  *logger.Logger
 }
 
-type Logger interface { // TODO
+func New(logger *logger.Logger, storage storage.Storage) *App {
+	return &App{
+		storage: storage,
+		logger:  logger,
+	}
 }
 
-type Storage interface { // TODO
+func (a *App) CreateEvent(ctx context.Context, duration string, description, notifyBefore *string, eventTime time.Time, title string, userId uuid.UUID) (model.Event, error) {
+	event := model.Event{
+		ID:        uuid.New(),
+		Title:     title,
+		EventTime: eventTime,
+		Duration:  parseDuration(duration),
+		UserID:    uuid.UUID(userId),
+	}
+
+	if description != nil {
+		event.Description = *description
+	}
+	if notifyBefore != nil {
+		event.NotifyBefore = parseDuration(*notifyBefore)
+	}
+
+	result, err := a.storage.Create(ctx, event)
+	if err != nil {
+		a.logger.Error("Error create event", "error", err)
+	} else {
+		metrics.EventsCreated.Inc()
+	}
+
+	return result, err
 }
 
-func New(logger Logger, storage Storage) *App {
-	return &App{}
+func (a *App) UpdateEvent(ctx context.Context, id uuid.UUID,
+	description, duration, notifyBefore, title *string, eventTime *time.Time,
+	userId *uuid.UUID,
+) (model.Event, error) {
+	// Получаем существующее событие
+	existingEvent, err := a.storage.GetByID(ctx, id)
+	if err != nil {
+		return existingEvent, err
+	}
+
+	// Обновляем поля
+	if title != nil {
+		existingEvent.Title = *title
+	}
+	if eventTime != nil {
+		existingEvent.EventTime = *eventTime
+	}
+	if duration != nil {
+		existingEvent.Duration = parseDuration(*duration)
+	}
+	if description != nil {
+		existingEvent.Description = *description
+	}
+	if userId != nil {
+		existingEvent.UserID = *userId
+	}
+	if notifyBefore != nil {
+		existingEvent.NotifyBefore = parseDuration(*notifyBefore)
+	}
+
+	result, err := a.storage.Update(ctx, id, existingEvent)
+	if err != nil {
+		a.logger.Error("Error update event", "error", err)
+	} else {
+		metrics.EventsUpdated.Inc()
+	}
+
+	return result, err
 }
 
-func (a *App) CreateEvent(ctx context.Context, id, title string) error {
-	// TODO
+func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
+	err := a.storage.Delete(ctx, id)
+	if err != nil {
+		a.logger.Error("Error delete event", "error", err)
+	} else {
+		metrics.EventsDeleted.Inc()
+	}
+
+	return err
+}
+
+func (a *App) GetByID(ctx context.Context, id uuid.UUID) (model.Event, error) {
+	result, err := a.storage.GetByID(ctx, id)
+	if err != nil {
+		a.logger.Error("Error getting event", "error", err)
+	}
+
+	return result, err
+}
+
+func (a *App) ListByDay(ctx context.Context, date time.Time) ([]model.Event, error) {
+	result, err := a.storage.ListByDay(ctx, date)
+	if err != nil {
+		a.logger.Error("Error getting events by day", "error", err)
+	}
+
+	return result, err
+}
+
+func (a *App) ListByWeek(ctx context.Context, date time.Time) ([]model.Event, error) {
+	result, err := a.storage.ListByWeek(ctx, date)
+	if err != nil {
+		a.logger.Error("Error getting events by week", "error", err)
+	}
+
+	return result, err
+}
+
+func (a *App) ListByMonth(ctx context.Context, date time.Time) ([]model.Event, error) {
+	result, err := a.storage.ListByMonth(ctx, date)
+	if err != nil {
+		a.logger.Error("Error getting events by month", "error", err)
+	}
+
+	return result, err
+}
+
+func parseDuration(dur string) time.Duration {
+	if dur == "" {
+		return 0
+	}
+	d, _ := time.ParseDuration(dur)
+	return d
+}
+
+func (a *App) UpdateMetrics(ctx context.Context) error {
+	// Получаем количество событий за сегодня
+	todayEvents, err := a.storage.ListByDay(ctx, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to get today events: %w", err)
+	}
+
+	metrics.EventsToday.Set(float64(len(todayEvents)))
+
+	// Получаем общее количество отправленных уведомлений
+	total, err := a.storage.GetTotalNotifications(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get total notifications: %w", err)
+	}
+
+	metrics.NotificationSent.Set(float64(total))
+
+	// Получаем количество уведомлений за сегодня
+	today, err := a.storage.GetTodayNotifications(ctx, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to get today notifications: %w", err)
+	}
+
+	metrics.NotificationsToday.Set(float64(today))
+
+	a.logger.Debug("Metrics updated",
+		"todayE", todayEvents,
+		"totalN", total,
+		"todayN", today)
+
 	return nil
-	// return a.storage.CreateEvent(storage.Event{ID: id, Title: title})
 }
-
-// TODO

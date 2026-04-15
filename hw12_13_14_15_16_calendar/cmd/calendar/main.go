@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/fixme_my_friend/hw12_13_14_15_16_calendar/internal/app"
-	"github.com/fixme_my_friend/hw12_13_14_15_16_calendar/internal/logger"
-	internalhttp "github.com/fixme_my_friend/hw12_13_14_15_16_calendar/internal/server/http"
-	memorystorage "github.com/fixme_my_friend/hw12_13_14_15_16_calendar/internal/storage/memory"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/app"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/logger"
+	internalhttp "github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/server/http"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage"
+	memorystorage "github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage/memory"
+	sqlstorage "github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage/sql"
 )
 
 var configFile string
@@ -29,9 +30,30 @@ func main() {
 	}
 
 	config := NewConfig()
-	logg := logger.New(config.Logger.Level)
+	err := config.readConfig(configFile)
+	if err != nil {
+		panic(err)
+	}
 
-	storage := memorystorage.New()
+	logg, err := logger.New(config.Logger.Level, config.Logger.Filename)
+	if err != nil {
+		panic(err)
+	}
+	defer logg.Close()
+
+	var storage storage.Storage
+	if config.Storage.Mode == "in-memory" {
+		storage = memorystorage.New()
+	} else {
+		var err error
+		storage, err = sqlstorage.New(config.Storage.Dsn)
+		if err != nil {
+			logg.Error(err.Error())
+			panic(err)
+		}
+	}
+	defer storage.Close()
+
 	calendar := app.New(logg, storage)
 
 	server := internalhttp.NewServer(logg, calendar)
@@ -40,22 +62,40 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
+	ticker := time.NewTicker(1 * time.Minute)
+
 	go func() {
-		<-ctx.Done()
+		// Сразу обновим метрики при старте
+		if err := calendar.UpdateMetrics(ctx); err != nil {
+			logg.Error("Failed to update metrics on start", "error", err)
+		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		defer cancel()
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
 
-		if err := server.Stop(ctx); err != nil {
-			logg.Error("failed to stop http server: " + err.Error())
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+				defer cancel()
+
+				if err := server.Stop(ctx); err != nil {
+					logg.Error("failed to stop http server", "error", err)
+				}
+				return
+			case <-ticker.C:
+				// Обновляем метрики
+				if err := calendar.UpdateMetrics(ctx); err != nil {
+					logg.Error("Failed to update notification metrics", "error", err)
+				}
+			}
 		}
 	}()
 
 	logg.Info("calendar is running...")
 
-	if err := server.Start(ctx); err != nil {
-		logg.Error("failed to start http server: " + err.Error())
+	if err := server.Start(ctx, config.Server.Host, config.Server.Port); err != nil {
+		logg.Error("failed to start http server", "error", err)
 		cancel()
-		os.Exit(1) //nolint:gocritic
+		panic(err)
 	}
 }

@@ -1,14 +1,151 @@
 package memorystorage
 
-import "sync"
+import (
+	"context"
+	"sync"
+	"time"
 
-type Storage struct {
-	// TODO
-	mu sync.RWMutex //nolint:unused
+	"github.com/google/uuid"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/model"
+	"github.com/oksanaMr/golang-hw/hw12_13_14_15_calendar/internal/storage"
+)
+
+var _ storage.Storage = (*InMemoryStorage)(nil)
+
+type InMemoryStorage struct {
+	mu     sync.RWMutex
+	events map[uuid.UUID]model.Event
 }
 
-func New() *Storage {
-	return &Storage{}
+func New() *InMemoryStorage {
+	return &InMemoryStorage{
+		events: make(map[uuid.UUID]model.Event),
+	}
 }
 
-// TODO
+func (s *InMemoryStorage) Create(_ context.Context, event model.Event) (model.Event, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.events[event.ID]; exists {
+		return model.Event{}, model.ErrEventAlreadyExists
+	}
+
+	s.events[event.ID] = event
+	return event, nil
+}
+
+func (s *InMemoryStorage) Update(_ context.Context, id uuid.UUID, event model.Event) (model.Event, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.events[id]; !exists {
+		return model.Event{}, model.ErrEventNotFound
+	}
+
+	event.ID = id // гарантируем, что ID не изменился
+	s.events[id] = event
+	return event, nil
+}
+
+func (s *InMemoryStorage) Delete(_ context.Context, id uuid.UUID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.events[id]; !exists {
+		return model.ErrEventNotFound
+	}
+
+	delete(s.events, id)
+	return nil
+}
+
+func (s *InMemoryStorage) GetByID(_ context.Context, id uuid.UUID) (model.Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	event, exists := s.events[id]
+	if !exists {
+		return model.Event{}, model.ErrEventNotFound
+	}
+
+	return event, nil
+}
+
+func (s *InMemoryStorage) ListByDay(_ context.Context, date time.Time) ([]model.Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var result []model.Event
+	year, month, day := date.Date()
+
+	for _, event := range s.events {
+		ey, em, ed := event.EventTime.Date()
+		if ey == year && em == month && ed == day {
+			result = append(result, event)
+		}
+	}
+
+	return result, nil
+}
+
+func (s *InMemoryStorage) ListByWeek(_ context.Context, date time.Time) ([]model.Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Находим начало и конец недели
+	weekday := date.Weekday()
+	var startOfWeek time.Time
+	switch weekday { //nolint:exhaustive
+	case time.Sunday:
+		startOfWeek = date.AddDate(0, 0, -6)
+	default:
+		startOfWeek = date.AddDate(0, 0, -int(weekday)+1)
+	}
+
+	startOfWeek = time.Date(startOfWeek.Year(), startOfWeek.Month(), startOfWeek.Day(), 0, 0, 0, 0, date.Location())
+	endOfWeek := startOfWeek.AddDate(0, 0, 7)
+
+	var result []model.Event
+	for _, event := range s.events {
+		if (event.EventTime.After(startOfWeek) || event.EventTime.Equal(startOfWeek)) &&
+			event.EventTime.Before(endOfWeek) {
+			result = append(result, event)
+		}
+	}
+
+	return result, nil
+}
+
+func (s *InMemoryStorage) ListByMonth(_ context.Context, date time.Time) ([]model.Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var result []model.Event
+	year, month, _ := date.Date()
+
+	for _, event := range s.events {
+		ey, em, _ := event.EventTime.Date()
+		if ey == year && em == month {
+			result = append(result, event)
+		}
+	}
+
+	return result, nil
+}
+
+func (s *InMemoryStorage) SaveNotification(ctx context.Context, notification *model.Notification) (model.Notification, error) {
+	return *notification, nil
+}
+
+func (s *InMemoryStorage) GetTotalNotifications(ctx context.Context) (int64, error) {
+	return 1000, nil
+}
+
+func (s *InMemoryStorage) GetTodayNotifications(ctx context.Context, date time.Time) (int64, error) {
+	return 100, nil
+}
+
+func (s *InMemoryStorage) Close() error {
+	return nil
+}
